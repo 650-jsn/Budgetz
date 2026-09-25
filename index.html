@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>Mein Gehalt</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0d0d0d;color:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app{max-width:520px;min-height:100vh;margin:auto;padding:22px 18px 40px}
+.top{display:flex;justify-content:space-between;align-items:center}
+h1{font-size:20px;margin:0;font-weight:650}
+button{border:0;color:#fff;background:#252525;border-radius:14px;cursor:pointer}
+.plus{width:48px;height:48px;font-size:30px;line-height:48px}
+.balance{text-align:center;padding:46px 0 28px}
+.balance .amount{font-size:52px;font-weight:750;letter-spacing:-2px}
+.balance .label{font-size:15px;color:#a9a9a9;margin-top:5px}
+.salary{text-align:center;color:#bdbdbd;font-size:14px;margin-bottom:24px}
+.section{font-size:14px;color:#999;margin:0 4px 10px}
+.expenses{display:flex;flex-direction:column;gap:10px}
+.card{background:#1a1a1a;border:1px solid #292929;border-radius:16px;padding:15px 16px;display:flex;justify-content:space-between;align-items:center}
+.name{font-size:16px;font-weight:600}
+.category{font-size:12px;color:#888;margin-top:4px}
+.price{font-size:16px;font-weight:650}
+.empty{color:#777;text-align:center;padding:28px 10px;background:#151515;border-radius:16px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;justify-content:center;padding:14px}
+.modal.show{display:flex}
+.sheet{width:min(520px,100%);background:#1a1a1a;border:1px solid #303030;border-radius:22px;padding:20px}
+.sheet h2{margin:0 0 18px;font-size:20px}
+label{display:block;color:#aaa;font-size:13px;margin:12px 0 6px}
+input,select{width:100%;padding:14px;border-radius:12px;border:1px solid #353535;background:#101010;color:#fff;font-size:16px}
+.actions{display:flex;gap:10px;margin-top:18px}
+.actions button{flex:1;padding:14px;font-size:16px}
+.save{background:#f2f2f2;color:#111}
+.delete{margin-top:8px;width:100%;padding:11px;background:transparent;color:#d0d0d0}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <h1>Mein Gehalt</h1>
+    <button class="plus" id="addBtn" aria-label="Ausgabe hinzufügen">+</button>
+  </div>
+
+  <div class="balance">
+    <div class="amount" id="balance">0,00 €</div>
+    <div class="label">verfügbar</div>
+  </div>
+
+  <div class="salary" id="salaryText">Gehalt: 0,00 €</div>
+
+  <div class="section">Ausgaben</div>
+  <div class="expenses" id="expenses"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2>Neue Ausgabe</h2>
+    <label for="name">Name</label>
+    <input id="name" placeholder="z. B. Essen">
+    <label for="amount">Betrag</label>
+    <input id="amount" type="number" min="0" step="0.01" placeholder="z. B. 30">
+    <label for="category">Kategorie</label>
+    <select id="category">
+      <option>Sonstiges</option>
+      <option>Essen</option>
+      <option>Kleidung</option>
+      <option>Wohnen</option>
+      <option>Verträge</option>
+      <option>Freizeit</option>
+      <option>Sparen</option>
+      <option>Transport</option>
+    </select>
+    <div class="actions">
+      <button id="cancelBtn">Abbrechen</button>
+      <button class="save" id="saveBtn">Hinzufügen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = "gehaltsAppV1";
+let data = JSON.parse(localStorage.getItem(KEY) || "null") || {
+  salary: 1100,
+  expenses: [
+    {name:"Essen", amount:30, category:"Essen"},
+    {name:"Kleidung", amount:198, category:"Kleidung"},
+    {name:"Ersparnisse", amount:200, category:"Sparen"}
+  ]
+};
+
+const euro = n => new Intl.NumberFormat("de-DE",{style:"currency",currency:"EUR"}).format(n);
+
+function save(){ localStorage.setItem(KEY, JSON.stringify(data)); }
+
+function render(){
+  const spent = data.expenses.reduce((sum,e)=>sum+Number(e.amount),0);
+  document.getElementById("balance").textContent = euro(Number(data.salary)-spent);
+  document.getElementById("salaryText").textContent = "Gehalt: " + euro(Number(data.salary));
+
+  const box=document.getElementById("expenses");
+  box.innerHTML="";
+  if(!data.expenses.length){
+    box.innerHTML='<div class="empty">Noch keine Ausgaben hinzugefügt.</div>';
+    return;
+  }
+  data.expenses.forEach((e,i)=>{
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`<div><div class="name"></div><div class="category"></div></div><div class="price">− ${euro(e.amount)}</div>`;
+    card.querySelector(".name").textContent=e.name;
+    card.querySelector(".category").textContent=e.category;
+    card.addEventListener("click",()=>{
+      if(confirm(`„${e.name}“ löschen?`)){
+        data.expenses.splice(i,1); save(); render();
+      }
+    });
+    box.appendChild(card);
+  });
+}
+
+function openModal(){document.getElementById("modal").classList.add("show");document.getElementById("name").focus()}
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+
+document.getElementById("addBtn").onclick=openModal;
+document.getElementById("cancelBtn").onclick=closeModal;
+document.getElementById("saveBtn").onclick=()=>{
+  const name=document.getElementById("name").value.trim();
+  const amount=Number(document.getElementById("amount").value);
+  const category=document.getElementById("category").value;
+  if(!name || !amount || amount<0){alert("Bitte Name und Betrag eingeben.");return}
+  data.expenses.push({name,amount,category});
+  save(); render(); closeModal();
+  document.getElementById("name").value="";
+  document.getElementById("amount").value="";
+};
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+render();
+</script>
+</body>
+</html>
